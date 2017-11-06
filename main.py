@@ -19,7 +19,7 @@ CXPB = 0.5
 MUTPB = 0.1
 
 
-with open('C:/Users/SEAK1/Harris/FeatureExtractionGA/data/baseFeatures','r') as f:
+with open('/Users/bang/workspace/FeatureExtractionGA/data/baseFeatures','r') as f:
     
     lines = f.readlines()
     NUM_FEATURES = len(lines)
@@ -32,7 +32,7 @@ with open('C:/Users/SEAK1/Harris/FeatureExtractionGA/data/baseFeatures','r') as 
         FEATURES.append(match)
 
         
-with open('C:/Users/SEAK1/Harris/FeatureExtractionGA/data/labels','r') as f:
+with open('/Users/bang/workspace/FeatureExtractionGA/data/labels','r') as f:
     
     line = f.readline()
     NUM_EXAMPLES = len(line)
@@ -59,7 +59,7 @@ def evaluate(individual):
         
     S = LABELS_CARDINALITY
     F = np.sum(matches)
-    SF = [a and b for a, b in zip(matches, LABELS)]
+    SF = np.sum([a and b for a, b in zip(matches, LABELS)])
     total = NUM_EXAMPLES
 
     if F==0:
@@ -71,13 +71,16 @@ def evaluate(individual):
     return conf1, conf2    
     
     
-
+def randBool(num_features):
+    prob=1/num_features
+    return random.random() < prob
+    
 
 creator.create("FitnessMulti", base.Fitness, weights=(1.0,1.0))
 creator.create("Individual", array.array, typecode='b', fitness=creator.FitnessMulti)
 
 toolbox = base.Toolbox()
-toolbox.register("attr_bool", random.randint, 0, 1)
+toolbox.register("attr_bool", randBool, NUM_FEATURES)
 toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=NUM_FEATURES)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
