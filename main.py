@@ -3,17 +3,20 @@ import numpy as np
 import random
 
 from deap import base, creator, tools
+from scoop import futures, shared
+
 
 NUM_FEATURES=None
 NUM_EXAMPLES=None
 
-
-NUM_GENERATION = 3
-POPULATION_SIZE = 100
-
 FEATURES = []
 LABELS = []
 LABELS_CARDINALITY = None
+
+# GA Parameters
+NUM_GENERATION = 3
+POPULATION_SIZE = 100
+
 
 
 with open('/Users/bang/workspace/FeatureGA/data/baseFeatures','r') as f:    
@@ -42,22 +45,27 @@ with open('/Users/bang/workspace/FeatureGA/data/labels','r') as f:
     LABELS_CARDINALITY = np.sum(LABELS)
 
     
-def evaluate(individual):
-    # TODO: Implement evaluation
     
+def evaluate(individual):
+    
+    nexample = shared.getConst('nexample')
+    features = shared.getConst('features')
+    labels = shared.getConst('labels')
+    labels_card = shared.getConst('labels_card')
+
     # Create a boolean array
-    matches = np.ones((NUM_EXAMPLES,), dtype=bool)
+    matches = np.ones((nexample,), dtype=bool)
     
     # Get indices of the feature that are active in each individual
-    features = np.nonzero(individual)
+    featureIndices = np.nonzero(individual)
     
-    for i in features:
-        matches = [a and b for a, b in zip(FEATURES[i], matches)]
+    for i in featureIndices:
+        matches = [a and b for a, b in zip(features[i], matches)]
         
-    S = LABELS_CARDINALITY
+    S = labels_card
     F = np.sum(matches)
-    SF = [a and b for a, b in zip(matches, LABELS)]
-    total = NUM_EXAMPLES
+    SF = [a and b for a, b in zip(matches, labels)]
+    total = nexample
     
     conf1 = SF / F  # Consistency (specificity)
     conf2 = SF / S  # Coverage    (Generality)
@@ -67,24 +75,31 @@ def evaluate(individual):
     
 
 
-creator.create("FitnessMulti", base.Fitness, weights=(1.0,1.0))
-creator.create("Individual", array.array, typecode='b', fitness=creator.FitnessMulti)
-
-toolbox = base.Toolbox()
-toolbox.register("attr_bool", random.randint, 0, 1)
-toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=NUM_FEATURES)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-
-toolbox.register("evaluate", evaluate)
-toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutFlipBit, indpb=1/NUM_FEATURES)
-toolbox.register("select", tools.selNSGA2)
-
-
 
 def main():
     
-      
+    creator.create("FitnessMulti", base.Fitness, weights=(1.0,1.0))
+    creator.create("Individual", array.array, typecode='b', fitness=creator.FitnessMulti)
+
+    toolbox = base.Toolbox()
+    toolbox.register("attr_bool", random.randint, 0, 1)
+    toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=NUM_FEATURES)
+    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+    toolbox.register("evaluate", evaluate)
+    toolbox.register("mate", tools.cxTwoPoint)
+    toolbox.register("mutate", tools.mutFlipBit, indpb=1/NUM_FEATURES)
+    toolbox.register("select", tools.selNSGA2)
+    toolbox.register("map", futures.map)    
+    
+
+    shared.setConst(nfeat = NUM_FEATURES)
+    shared.setConst(nexample = NUM_EXAMPLES)
+    shared.setConst(features = FEATURES)
+    shared.setConst(labels = LABELS)
+    shared.setConst(labels_card = LABELS_CARDINALITY)
+    
+
     population = toolbox.population(n=POPULATION_SIZE)
         
     for g in range(NUM_GENERATION):
