@@ -1,22 +1,25 @@
 
 import numpy as np
 import random
+import array
 
 from deap import base, creator, tools
 
 NUM_FEATURES=None
 NUM_EXAMPLES=None
 
-
-NUM_GENERATION = 3
-POPULATION_SIZE = 100
-
 FEATURES = []
 LABELS = []
 LABELS_CARDINALITY = None
 
+# GA Parameters
+NUM_GENERATION = 3
+POPULATION_SIZE = 100
+CXPB = 0.5
+MUTPB = 0.1
 
-with open('/Users/bang/workspace/FeatureGA/data/baseFeatures','r') as f:    
+
+with open('C:/Users/SEAK1/Harris/FeatureExtractionGA/data/baseFeatures','r') as f:
     
     lines = f.readlines()
     NUM_FEATURES = len(lines)
@@ -29,7 +32,7 @@ with open('/Users/bang/workspace/FeatureGA/data/baseFeatures','r') as f:
         FEATURES.append(match)
 
         
-with open('/Users/bang/workspace/FeatureGA/data/labels','r') as f:  
+with open('C:/Users/SEAK1/Harris/FeatureExtractionGA/data/labels','r') as f:
     
     line = f.readline()
     NUM_EXAMPLES = len(line)
@@ -49,7 +52,7 @@ def evaluate(individual):
     matches = np.ones((NUM_EXAMPLES,), dtype=bool)
     
     # Get indices of the feature that are active in each individual
-    features = np.nonzero(individual)
+    features = np.nonzero(individual)[0]
     
     for i in features:
         matches = [a and b for a, b in zip(FEATURES[i], matches)]
@@ -58,8 +61,11 @@ def evaluate(individual):
     F = np.sum(matches)
     SF = [a and b for a, b in zip(matches, LABELS)]
     total = NUM_EXAMPLES
-    
-    conf1 = SF / F  # Consistency (specificity)
+
+    if F==0:
+        conf1 = 0
+    else:
+        conf1 = SF / F  # Consistency (specificity)
     conf2 = SF / S  # Coverage    (Generality)
     
     return conf1, conf2    
@@ -93,7 +99,7 @@ def main():
         offspring = toolbox.select(population, POPULATION_SIZE)
         
         # Clone the selected individuals
-        offspring = map(toolbox.clone, offspring)
+        offspring = list(map(toolbox.clone, offspring))
         
         # TODO: Implement binary tournament selection
 
