@@ -6,11 +6,12 @@ import pickle
 
 from deap import base, creator, tools
 
-RESULT_SAVE_PATH = '/Users/bang/workspace/FeatureExtractionGA/result/result'
-STATS_SAVE_PATH = '/Users/bang/workspace/FeatureExtractionGA/result/stats'
+ROOT_PATH = '/Users/bang/workspace/FeatureExtractionGA'
 
-FEATURE_DATA_PATH = '/Users/bang/workspace/FeatureExtractionGA/data/baseFeatures'
-LABEL_DATA_PATH = '/Users/bang/workspace/FeatureExtractionGA/data/labels'
+RESULT_SAVE_PATH = ROOT_PATH + '/result/'
+
+FEATURE_INPUT_DATA_PATH = ROOT_PATH + '/data/baseFeatures'
+LABEL_INPUT_DATA_PATH = ROOT_PATH + '/data/labels'
 
 
 NUM_FEATURES = None
@@ -22,13 +23,13 @@ LABELS_CARDINALITY = None
 
 # GA Parameters
 NUM_GENERATION = 100
-POPULATION_SIZE = 100
+POPULATION_SIZE = 200
 CXPB = 0.5
 MUTPB = 0.1
 
 
 
-with open(FEATURE_DATA_PATH, 'r') as f:
+with open(FEATURE_INPUT_DATA_PATH, 'r') as f:
     lines = f.readlines()
     NUM_FEATURES = len(lines)
 
@@ -39,7 +40,7 @@ with open(FEATURE_DATA_PATH, 'r') as f:
                 match[ind] = True
         FEATURES.append(match)
 
-with open(LABEL_DATA_PATH, 'r') as f:
+with open(LABEL_INPUT_DATA_PATH, 'r') as f:
     line = f.readline()
     NUM_EXAMPLES = len(line)
     match = np.zeros((len(line),), dtype=bool)
@@ -52,8 +53,6 @@ with open(LABEL_DATA_PATH, 'r') as f:
 
 
 def evaluate(individual):
-    # TODO: Implement evaluation
-
     # Create a boolean array
     matches = np.ones((NUM_EXAMPLES,), dtype=bool)
 
@@ -103,29 +102,17 @@ toolbox.register("mutate", tools.mutFlipBit, indpb=1 / NUM_FEATURES)
 toolbox.register("select", tools.selNSGA2)
 
 
-#stats = tools.Statistics(key=lambda ind: ind.fitness.values)
-#stats_size = tools.Statistics(key=len)
-#mstats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
 
-#stats.register("consistency_avg", np.max, axis=0)
-#stats.register("consistency_std", np.std, axis=0)
-#stats.register("coverage_avg", np.max, axis=1)
-#stats.register("coverage_std", np.std, axis=1)
-#stats.register("std", np.std, axis=0)
-#stats.register("min", np.min, axis=0)
-#stats.register("max", np.max, axis=0)
-
-#logbook = tools.Logbook()
 
 
 
 def main():
     
     population = toolbox.population(n=POPULATION_SIZE)
+    
+    best_scores = []
 
     for g in range(NUM_GENERATION):
-
-        print("Generation: {0}".format(g))
 
         # Select the next generation individuals
         offspring = toolbox.select(population, POPULATION_SIZE)
@@ -158,50 +145,49 @@ def main():
         population[:] = offspring
         
         
-        
-        
-
-        # Record statistics
-#        record = stats.compile(population)
-#        consistency_max = record['consistency_max'][0]
-#        coverage_max = record['coverage_max'][0]
-#        logbook.record(gen=g, consistency_max=consistency_max, coverage_max=coverage_max)
-        
-#    print(logbook)
-
-    
-    
-    
-
-    with open(RESULT_SAVE_PATH, 'w') as resultFile:
-
-        population = toolbox.select(population, POPULATION_SIZE)
-        feature_indices = []
-        
+        # Save information
+        shortest_distance = 10000
         for individual in population:
-            indices = []
-            for ind, bit in enumerate(individual):
-                if bit:
-                    indices.append(str(ind))
-                else:
-                    pass
-            if indices:
-                feature_indices.append(",".join(indices))
+            dist = distance_to_UP(individual.fitness.values)
+            if shortest_distance > dist:
+                shortest_distance = dist
+        best_scores.append(shortest_distance)
+        print("Generation: {0}. Best Score: {1}".format(g, shortest_distance))              
+              
+        if (g+1) % 20 == 0:
+              
+            feature_save_path = RESULT_SAVE_PATH + str(g+1) + "_feature"
+            metrics_save_path = RESULT_SAVE_PATH + str(g+1) + "_metric"
 
-        resultFile.write("\n".join(feature_indices))
+            with open(metrics_save_path, 'w') as f:
 
-        
-        
-    # with open(STATS_SAVE_PATH, 'w') as f:
-    #     gen, consistency_max, coverage_max = logbook.select("gen", "consistency_max", "coverage_max")
-    #     content = []
-    #     for i in range(len(gen)):
-    #         row = [str(gen[i]), str(consistency_max[i]), str(coverage_max[i])]
-    #         content.append(",".join(row))
-    #
-    #     f.write("\n".join(content))
-        
-        
+                metrics = []
+                for individual in population:
+                    row = []
+                    for val in individual.fitness.values:
+                        row.append(str(val))
+
+                    metrics.append(",".join(row))
+
+                f.write("\n".join(metrics))              
+
+
+            with open(feature_save_path, 'w') as f:
+
+                feature_indices = []
+                for individual in population:
+                    indices = []
+                    for ind, bit in enumerate(individual):
+                        if bit:
+                            indices.append(str(ind))
+                        else:
+                            pass
+                    if indices:
+                        feature_indices.append(",".join(indices))
+
+                f.write("\n".join(feature_indices))
+
+
 
 if __name__ == '__main__':
     main()
